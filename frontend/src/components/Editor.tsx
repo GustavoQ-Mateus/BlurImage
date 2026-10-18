@@ -1,11 +1,19 @@
 import type Konva from 'konva'
 import { useEffect, useRef, useState } from 'react'
 import { Image as KonvaImage, Layer, Rect, Stage, Transformer } from 'react-konva'
-import { clampToImage, moveInside, regionFromDrag, type RegionChanges } from '../regions'
+import { regionFromDrag, type RegionChanges } from '../regions'
 import type { Point, Region, Size } from '../types'
 import { useElementSize } from '../useElementSize'
+import { useSpaceKey } from '../useSpaceKey'
+import { useViewport } from '../useViewport'
+import { ZOOM_STEP } from '../viewport'
 import { BlurPreview } from './BlurPreview'
 import { RegionShape } from './RegionShape'
+import { ZoomControls } from './ZoomControls'
+
+const MIDDLE_BUTTON = 1
+const ROTATION_SNAPS = [0, 45, 90, 135, 180, 225, 270, 315]
+const ROTATION_SNAP_TOLERANCE = 5
 
 interface EditorProps {
   image: HTMLImageElement
@@ -24,73 +32,111 @@ interface Drag {
 
 export function Editor({ image, regions, selectedId, radius, onAdd, onUpdate, onSelect }: EditorProps) {
   const containerRef = useRef<HTMLDivElement>(null)
+  const stageRef = useRef<Konva.Stage>(null)
   const layerRef = useRef<Konva.Layer>(null)
   const transformerRef = useRef<Konva.Transformer>(null)
   const [drag, setDrag] = useState<Drag | null>(null)
+  const [panFrom, setPanFrom] = useState<Point | null>(null)
+  const spaceHeld = useSpaceKey()
   const container = useElementSize(containerRef)
   const imageSize: Size = { width: image.naturalWidth, height: image.naturalHeight }
-  const scale = Math.min(container.width / imageSize.width, container.height / imageSize.height, 1) || 1
+  const viewport = useViewport(imageSize, container)
+  const { view } = viewport
 
   useEffect(() => {
     const selectedNode = selectedId ? layerRef.current?.findOne(`#${selectedId}`) : undefined
     transformerRef.current?.nodes(selectedNode ? [selectedNode] : [])
   }, [selectedId, regions])
 
-  function pointer(): Point | null {
+  function imagePointer(): Point | null {
     return layerRef.current?.getRelativePointerPosition() ?? null
   }
 
-  function startDrag(event: Konva.KonvaEventObject<PointerEvent>) {
+  function screenPointer(): Point | null {
+    return stageRef.current?.getPointerPosition() ?? null
+  }
+
+  function handlePointerDown(event: Konva.KonvaEventObject<PointerEvent>) {
+    if (event.evt.button === MIDDLE_BUTTON || spaceHeld) {
+      setPanFrom(screenPointer())
+      return
+    }
     if (event.target.name() === 'region' || event.target.getParent()?.className === 'Transformer') return
-    const start = pointer()
+    const start = imagePointer()
     if (!start) return
     onSelect(null)
     setDrag({ start, end: start })
   }
 
-  function continueDrag() {
-    const end = pointer()
-    if (!drag || !end) return
-    setDrag({ ...drag, end })
+  function handlePointerMove() {
+    const screen = screenPointer()
+    if (panFrom && screen) {
+      viewport.panBy(screen.x - panFrom.x, screen.y - panFrom.y)
+      setPanFrom(screen)
+      return
+    }
+    const end = imagePointer()
+    if (drag && end) setDrag({ ...drag, end })
   }
 
-  function finishDrag() {
+  function handlePointerUp() {
+    setPanFrom(null)
     if (!drag) return
     const region = regionFromDrag(drag.start, drag.end, imageSize, radius)
     setDrag(null)
     if (region) onAdd(region)
   }
 
+  function handleWheel(event: Konva.KonvaEventObject<WheelEvent>) {
+    event.evt.preventDefault()
+    const screen = screenPointer()
+    if (screen) viewport.zoomAt(screen, event.evt.deltaY < 0 ? ZOOM_STEP : 1 / ZOOM_STEP)
+  }
+
   const draft = drag && regionFromDrag(drag.start, drag.end, imageSize, radius)
 
   return (
-    <div ref={containerRef} className="editor">
+    <div ref={containerRef} className={spaceHeld || panFrom ? 'editor panning' : 'editor'}>
       <Stage
-        width={imageSize.width * scale}
-        height={imageSize.height * scale}
-        onPointerDown={startDrag}
-        onPointerMove={continueDrag}
-        onPointerUp={finishDrag}
+        ref={stageRef}
+        width={container.width}
+        height={container.height}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onWheel={handleWheel}
       >
-        <Layer ref={layerRef} scaleX={scale} scaleY={scale}>
+        <Layer ref={layerRef} x={view.x} y={view.y} scaleX={view.scale} scaleY={view.scale}>
           <KonvaImage image={image} name="background" />
           {regions.map((region) => (
-            <BlurPreview key={`preview-${region.id}`} image={image} region={region} scale={scale} />
+            <BlurPreview key={`preview-${region.id}`} image={image} region={region} scale={view.scale} />
           ))}
           {regions.map((region) => (
             <RegionShape
               key={region.id}
               region={region}
               selected={region.id === selectedId}
+              draggable={!spaceHeld}
               onSelect={() => onSelect(region.id)}
-              onMove={(box) => onUpdate(region.id, moveInside(box, imageSize))}
-              onResize={(box) => onUpdate(region.id, clampToImage(box, imageSize))}
+              onChange={(changes) => onUpdate(region.id, changes)}
             />
           ))}
           {draft && <Rect {...draft} stroke="#4da3ff" dash={[6, 4]} strokeScaleEnabled={false} listening={false} />}
-          <Transformer ref={transformerRef} rotateEnabled={false} keepRatio={false} ignoreStroke />
+          <Transformer
+            ref={transformerRef}
+            keepRatio={false}
+            ignoreStroke
+            rotationSnaps={ROTATION_SNAPS}
+            rotationSnapTolerance={ROTATION_SNAP_TOLERANCE}
+          />
         </Layer>
       </Stage>
+      <ZoomControls
+        scale={view.scale}
+        onZoom={viewport.zoomCentered}
+        onActualSize={viewport.actualSize}
+        onFit={viewport.fit}
+      />
     </div>
   )
 }

@@ -79,19 +79,43 @@ button:disabled {
   min-height: 0;
 }
 
-.editor,
+.editor {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  cursor: crosshair;
+}
+
+.editor.panning {
+  cursor: grab;
+}
+
 .empty {
   display: flex;
   align-items: center;
   justify-content: center;
-  min-width: 0;
-  min-height: 0;
-  padding: 16px;
-  overflow: hidden;
+  color: var(--muted);
 }
 
-.empty {
-  color: var(--muted);
+.zoom-controls {
+  position: absolute;
+  right: 16px;
+  bottom: 16px;
+  display: flex;
+  gap: 4px;
+  padding: 4px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+}
+
+.zoom-controls button {
+  padding: 4px 10px;
+}
+
+.zoom-level {
+  min-width: 64px;
 }
 
 .panel {

@@ -1,18 +1,18 @@
 import { describe, expect, it } from 'vitest'
-import { clampToImage, moveInside, regionFromDrag, regionsReducer, toApiRegions } from './regions'
+import { clampToImage, regionBounds, regionFromDrag, regionsReducer, toApiRegions } from './regions'
 import type { Region } from './types'
 
 const IMAGE = { width: 100, height: 80 }
 
 function region(overrides: Partial<Region> = {}): Region {
-  return { id: 'a', x: 10, y: 10, width: 20, height: 20, radius: 10, ...overrides }
+  return { id: 'a', x: 10, y: 10, width: 20, height: 20, radius: 10, rotation: 0, ...overrides }
 }
 
 describe('regionFromDrag', () => {
   it('drag para cima e para a esquerda gera caixa com tamanho positivo', () => {
     const result = regionFromDrag({ x: 50, y: 40 }, { x: 20, y: 10 }, IMAGE, 15)
 
-    expect(result).toMatchObject({ x: 20, y: 10, width: 30, height: 30, radius: 15 })
+    expect(result).toMatchObject({ x: 20, y: 10, width: 30, height: 30, radius: 15, rotation: 0 })
   })
 
   it('drag que passa da imagem é cortado na borda', () => {
@@ -27,14 +27,19 @@ describe('regionFromDrag', () => {
 })
 
 describe('clampToImage', () => {
-  it('redimensionar além da borda corta a caixa sem mover a origem', () => {
+  it('caixa que passa da borda é cortada sem mover a origem', () => {
     expect(clampToImage({ x: 80, y: 5, width: 50, height: 10 }, IMAGE)).toEqual({ x: 80, y: 5, width: 20, height: 10 })
   })
 })
 
-describe('moveInside', () => {
-  it('mover além da borda mantém o tamanho e encosta na borda', () => {
-    expect(moveInside({ x: 90, y: -5, width: 20, height: 10 }, IMAGE)).toEqual({ x: 80, y: 0, width: 20, height: 10 })
+describe('regionBounds', () => {
+  it('giro de 90 graus troca largura e altura em torno do centro', () => {
+    const bounds = regionBounds(region({ x: 0, y: 40, width: 100, height: 20, rotation: 90 }))
+
+    expect(bounds.x).toBeCloseTo(40)
+    expect(bounds.y).toBeCloseTo(0)
+    expect(bounds.width).toBeCloseTo(20)
+    expect(bounds.height).toBeCloseTo(100)
   })
 })
 
@@ -56,8 +61,12 @@ describe('regionsReducer', () => {
 
 describe('toApiRegions', () => {
   it('arredonda as coordenadas para pixels inteiros e descarta o id', () => {
-    const result = toApiRegions([region({ x: 10.4, y: 9.6, width: 0.3, height: 20.5, radius: 12.2 })])
+    const result = toApiRegions([region({ x: 10.4, y: 9.6, width: 0.3, height: 20.5, radius: 12.2, rotation: 30.04 })])
 
-    expect(result).toEqual([{ x: 10, y: 10, width: 1, height: 21, radius: 12 }])
+    expect(result).toEqual([{ x: 10, y: 10, width: 1, height: 21, radius: 12, rotation: 30 }])
+  })
+
+  it('normaliza giro negativo para o intervalo de 0 a 360', () => {
+    expect(toApiRegions([region({ rotation: -45 })])[0].rotation).toBe(315)
   })
 })

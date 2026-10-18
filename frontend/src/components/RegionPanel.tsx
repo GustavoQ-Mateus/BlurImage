@@ -50,6 +50,7 @@ export function RegionPanel({
                 #{index + 1}
                 <span>
                   {Math.round(region.width)}×{Math.round(region.height)} · {region.radius}px
+                  {region.rotation !== 0 && ` · ${Math.round(region.rotation)}°`}
                 </span>
               </button>
               <button className="remove" aria-label={`Remover região ${index + 1}`} onClick={() => onRemove(region.id)}>

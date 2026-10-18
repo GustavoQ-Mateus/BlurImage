@@ -70,6 +70,7 @@ export default function App() {
       <main className="workspace">
         {image ? (
           <Editor
+            key={image.src}
             image={image}
             regions={regions}
             selectedId={selected?.id ?? null}
@@ -91,7 +92,9 @@ export default function App() {
           onClear={clear}
         />
       </main>
-      <footer className="shortcuts">Arraste para criar · Del remove · Esc tira a seleção</footer>
+      <footer className="shortcuts">
+        Arraste para criar · Roda do mouse: zoom · Espaço + arrastar: mover a vista · Del remove · Esc tira a seleção
+      </footer>
     </div>
   )
 }

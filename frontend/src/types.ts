@@ -13,4 +13,5 @@ export interface Box extends Point, Size {}
 export interface Region extends Box {
   id: string
   radius: number
+  rotation: number
 }
