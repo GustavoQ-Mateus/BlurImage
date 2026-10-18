@@ -30,6 +30,7 @@ export function RegionShape({ region, selected, onSelect, onMove, onResize }: Re
       y={region.y}
       width={region.width}
       height={region.height}
+      fill="transparent"
       stroke={selected ? '#4da3ff' : 'rgba(255, 255, 255, 0.8)'}
       strokeWidth={selected ? 2 : 1}
       dash={selected ? undefined : [6, 4]}
