@@ -5,9 +5,12 @@ from pathlib import Path
 from PIL import Image, JpegImagePlugin
 from app.blur import blur_regions
 from app.codecs.base import UnsupportedImage, ensure_single_frame, raw_regions
+from app.exif_thumbnail import blur_exif_thumbnail
 from app.region import Region, align_to_grid
 
 BLOCK_SIZE = 8
+APP1 = 0xE1
+START_OF_SCAN = 0xDA
 
 
 class JpegCodec:
@@ -19,6 +22,7 @@ class JpegCodec:
             ensure_single_frame(image)
             subsampling = _subsampling(image)
             progressive = bool(image.info.get("progressive"))
+            exif = image.info.get("exif", b"")
             cell_width, cell_height = _mcu_size(image)
             targets = raw_regions(image, regions)
             blurred = blur_regions(image, targets)
@@ -28,7 +32,8 @@ class JpegCodec:
                 patch = BytesIO()
                 blurred.crop(cell.box).save(patch, "JPEG", qtables=image.quantization, subsampling=subsampling)
                 patches.append((cell.left, cell.top, patch.getvalue()))
-        return self._drop(data, patches, progressive)
+            blurred_exif = blur_exif_thumbnail(exif, targets, image.size)
+        return _replace_segment(self._drop(data, patches, progressive), exif, blurred_exif)
 
     def _drop(self, data: bytes, patches: list[tuple[int, int, bytes]], progressive: bool) -> bytes:
         with tempfile.TemporaryDirectory() as tmp:
@@ -45,6 +50,19 @@ class JpegCodec:
                 subprocess.run(command, check=True, capture_output=True)
                 current = output
             return current.read_bytes()
+
+
+def _replace_segment(jpeg: bytes, original: bytes, replacement: bytes) -> bytes:
+    if original == replacement:
+        return jpeg
+    position = 2
+    while jpeg[position + 1] != START_OF_SCAN:
+        length = int.from_bytes(jpeg[position + 2 : position + 4], "big")
+        payload_start = position + 4
+        if jpeg[position + 1] == APP1 and jpeg[payload_start : payload_start + length - 2] == original:
+            return jpeg[:payload_start] + replacement + jpeg[payload_start + length - 2 :]
+        position += 2 + length
+    return jpeg
 
 
 def _mcu_size(image: Image.Image) -> tuple[int, int]:

@@ -2,14 +2,19 @@ import os
 import shutil
 from io import BytesIO
 from typing import Annotated
+import pillow_heif
 from fastapi import FastAPI, Form, HTTPException, UploadFile
 from fastapi.responses import Response
 from PIL import Image, UnidentifiedImageError
 from pydantic import BaseModel, Field, TypeAdapter, ValidationError
 from app.codecs import Codec, UnsupportedImage, build_codecs
+from app.codecs.heic import heic_preview
 from app.region import Region
 
 MAX_RADIUS = 500
+HEIF = "HEIF"
+
+pillow_heif.register_heif_opener()
 
 
 class RegionIn(BaseModel):
@@ -48,6 +53,13 @@ def create_app(codecs: dict[str, Codec] | None = None) -> FastAPI:
         except UnsupportedImage as error:
             raise HTTPException(422, str(error)) from error
         return Response(result, media_type=Image.MIME[image_format])
+
+    @app.post("/api/preview")
+    async def preview(file: UploadFile) -> Response:
+        data = await file.read()
+        if _detect_format(data) != HEIF:
+            raise HTTPException(415, "Prévia só é necessária para HEIC.")
+        return Response(heic_preview(data), media_type="image/jpeg")
 
     return app
 

@@ -3,7 +3,7 @@ import numpy as np
 import pytest
 from app.codecs.jpeg import JpegCodec
 from app.region import Region
-from tests.conftest import decode, encode, photo
+from tests.conftest import decode, encode, exif_with_thumbnail, photo
 
 REGIONS = [
     Region(30, 25, 90, 70, radius=12),
@@ -62,3 +62,16 @@ def test_grayscale(jpegtran):
     result = JpegCodec(jpegtran).apply(original, REGIONS)
     assert decode(result).mode == "L"
     assert result != original
+
+
+def test_exif_thumbnail_does_not_keep_original_pixels(jpegtran):
+    exif = exif_with_thumbnail(photo().resize((64, 48)))
+    original = encode(photo(), "JPEG", quality=85, exif=exif)
+
+    result = JpegCodec(jpegtran).apply(original, REGIONS)
+
+    after = decode(result).info["exif"]
+    thumbnail_start = exif.index(b"\xff\xd8")
+    assert len(after) == len(exif)
+    assert after[:thumbnail_start] == exif[:thumbnail_start]
+    assert exif[thumbnail_start:] not in result

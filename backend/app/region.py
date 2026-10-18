@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from math import ceil
+from math import ceil, floor
 
 EXIF_ORIENTATION_TAG = 0x0112
 
@@ -18,6 +18,15 @@ class Region:
 
     def with_box(self, left: int, top: int, right: int, bottom: int) -> "Region":
         return Region(left, top, right, bottom, self.radius)
+
+    def scaled(self, horizontal: float, vertical: float) -> "Region":
+        return Region(
+            floor(self.left * horizontal),
+            floor(self.top * vertical),
+            ceil(self.right * horizontal),
+            ceil(self.bottom * vertical),
+            max(round(self.radius * (horizontal + vertical) / 2), 1),
+        )
 
 
 def clamp(region: Region, width: int, height: int) -> Region | None:
@@ -51,3 +60,9 @@ def align_to_grid(region: Region, cell_width: int, cell_height: int, width: int,
         min(ceil(region.right / cell_width) * cell_width, width),
         min(ceil(region.bottom / cell_height) * cell_height, height),
     )
+
+
+def scale_regions(regions: list[Region], source: tuple[int, int], target: tuple[int, int]) -> list[Region]:
+    horizontal, vertical = target[0] / source[0], target[1] / source[1]
+    scaled = (clamp(r.scaled(horizontal, vertical), *target) for r in regions)
+    return [r for r in scaled if r is not None]

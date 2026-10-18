@@ -4,6 +4,7 @@ from PIL import Image
 from PIL.PngImagePlugin import PngInfo
 from app.blur import blur_regions
 from app.codecs.base import UnsupportedImage, ensure_single_frame, raw_regions
+from app.exif_thumbnail import blur_exif_thumbnail
 from app.region import Region
 
 SUPPORTED_MODES = {"L", "LA", "RGB", "RGBA"}
@@ -22,9 +23,13 @@ class LosslessCodec:
             ensure_single_frame(image)
             if image.mode not in SUPPORTED_MODES:
                 raise UnsupportedImage(f"{self._format} em modo {image.mode} não é suportado.")
-            result = blur_regions(image, raw_regions(image, regions))
+            targets = raw_regions(image, regions)
+            result = blur_regions(image, targets)
+            options = self._save_options(image)
+            if "exif" in options:
+                options["exif"] = blur_exif_thumbnail(options["exif"], targets, image.size)
             output = BytesIO()
-            result.save(output, self._format, **self._save_options(image))
+            result.save(output, self._format, **options)
         return output.getvalue()
 
 
