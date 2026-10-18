@@ -1,0 +1,175 @@
+:root {
+  --bg: #16171a;
+  --surface: #1f2125;
+  --surface-hover: #2a2d33;
+  --border: #33363d;
+  --text: #e6e7ea;
+  --muted: #9a9ea8;
+  --accent: #4da3ff;
+  --danger: #ff6b6b;
+  font: 14px/1.4 system-ui, 'Segoe UI', Roboto, sans-serif;
+  color: var(--text);
+  background: var(--bg);
+  color-scheme: dark;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
+
+button,
+.button {
+  font: inherit;
+  color: var(--text);
+  background: var(--surface-hover);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px 14px;
+  cursor: pointer;
+}
+
+button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #0b1320;
+  font-weight: 600;
+}
+
+.secondary {
+  background: transparent;
+}
+
+.app {
+  display: grid;
+  grid-template-rows: auto 1fr auto;
+  height: 100vh;
+}
+
+.toolbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 16px;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.file-info {
+  color: var(--muted);
+}
+
+.status {
+  flex: 1;
+  text-align: right;
+  color: var(--muted);
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: 1fr 260px;
+  min-height: 0;
+}
+
+.editor,
+.empty {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 0;
+  min-height: 0;
+  padding: 16px;
+  overflow: hidden;
+}
+
+.empty {
+  color: var(--muted);
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+  padding: 16px;
+  background: var(--surface);
+  border-left: 1px solid var(--border);
+  overflow-y: auto;
+}
+
+.panel h2 {
+  margin: 0 0 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.slider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.slider input {
+  flex: 1;
+  accent-color: var(--accent);
+}
+
+.hint {
+  margin: 6px 0 0;
+  color: var(--muted);
+}
+
+.regions ul {
+  list-style: none;
+  margin: 0 0 12px;
+  padding: 0;
+}
+
+.regions li {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.region {
+  flex: 1;
+  display: flex;
+  justify-content: space-between;
+  text-align: left;
+  background: transparent;
+}
+
+.region span {
+  color: var(--muted);
+}
+
+.region.active {
+  border-color: var(--accent);
+}
+
+.remove {
+  padding: 6px 10px;
+  background: transparent;
+}
+
+.remove:hover {
+  color: var(--danger);
+}
+
+.shortcuts {
+  padding: 6px 16px;
+  font-size: 12px;
+  color: var(--muted);
+  background: var(--surface);
+  border-top: 1px solid var(--border);
+}
