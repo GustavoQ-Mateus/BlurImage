@@ -10,18 +10,23 @@ A raiz é um único repositório git (`GustavoQ-Mateus/BlurImage`, público), co
 1. A imagem exportada tem a mesma largura, altura e formato da original.
 2. JPEG: os coeficientes DCT de todos os blocos fora das regiões alinhadas à MCU são idênticos aos do original.
 3. PNG e WebP: os pixels fora das regiões são idênticos aos do original.
-4. EXIF, perfil ICC (e, no PNG, os chunks de texto) continuam presentes e iguais.
-5. Uma região desenhada numa foto com orientação EXIF diferente de 1 cai no lugar certo.
+4. HEIC: os blocos da grade que não tocam nenhuma região são idênticos aos do original; nos blocos tocados, os pixels fora das regiões ficam visualmente iguais (PSNR acima de 40 dB).
+5. EXIF, perfil ICC (e, no PNG, os chunks de texto) continuam presentes e iguais, exceto a miniatura.
+6. Nenhuma versão da área borrada sobrevive no arquivo: miniaturas (EXIF e HEIC) e imagens auxiliares do HEIC (mapa de ganho HDR, profundidade, transparência) recebem o mesmo blur, e os dados originais dos blocos trocados são removidos.
+7. Uma região desenhada numa foto com orientação EXIF (ou `irot`/`imir` no HEIC) cai no lugar certo.
 
-Cada critério tem teste automatizado no backend. Formato novo só entra com testes que cubram os cinco.
+Cada critério tem teste automatizado no backend. Formato novo só entra com testes que cubram todos.
 
 ## Decisões de arquitetura
 Respeite estas decisões. Mudar alguma exige discussão com o usuário antes do código.
 - O navegador só edita e mostra prévia. O arquivo final é sempre gerado no backend, porque `canvas.toBlob()` recodifica a imagem e descarta metadados.
 - JPEG nunca é recodificado inteiro: só os blocos que tocam as regiões são codificados de novo, com as tabelas de quantização e o subsampling originais, e inseridos com `jpegtran -drop`.
 - WebP lossy é exportado em WebP lossless, para não somar perda.
+- HEIC nunca é recodificado inteiro: fotos de celular são grades de blocos HEVC (512x512) e só os blocos que tocam as regiões são recodificados (qualidade 92, com a matriz de cor do original), editando a estrutura ISOBMFF em `app/heif/`. HEIC de imagem única é recodificado inteiro. HEIC com mais de 8 bits ou com `clap` é recusado.
+- O navegador não exibe HEIC: o frontend mostra a prévia em JPEG gerada por `POST /api/preview`, já orientada.
+- Miniaturas embutidas são refeitas com o blur aplicado, no mesmo tamanho em bytes no caso do EXIF.
 - As regiões viajam em coordenadas da imagem orientada (como o navegador exibe); o backend converte para os pixels gravados.
-- Backend sem estado e sem banco: um endpoint, `POST /api/blur`. O original nunca é sobrescrito.
+- Backend sem estado e sem banco: `POST /api/blur` e `POST /api/preview`. O original nunca é sobrescrito.
 - Uma única abstração de variação: o `Protocol` `Codec`, registrado por formato em `build_codecs`. Formato novo é uma classe nova.
 
 Só implemente o que foi pedido; escopo novo é combinado antes de virar código. Se o pedido for ambíguo ou contradizer o código, pergunte antes de implementar.
@@ -29,7 +34,7 @@ Só implemente o que foi pedido; escopo novo é combinado antes de virar código
 ## Estrutura
 | Pasta | Stack | Papel |
 |---|---|---|
-| `backend` | Python 3.12, FastAPI, Pillow, jpegtran (libjpeg-turbo), pytest | Processamento da imagem |
+| `backend` | Python 3.12, FastAPI, Pillow, pillow-heif, jpegtran (libjpeg-turbo), pytest | Processamento da imagem |
 | `frontend` | React, Vite, TypeScript, react-konva, Vitest | Editor e prévia |
 
 O `jpegtran` vem do libjpeg-turbo. No Windows fica em `C:\libjpeg-turbo64\bin\jpegtran.exe`; o backend procura na variável `JPEGTRAN` e depois no `PATH`.
@@ -42,7 +47,7 @@ O `jpegtran` vem do libjpeg-turbo. No Windows fica em `C:\libjpeg-turbo64\bin\jp
 - Nunca use travessão em nada gerado.
 - Não alinhe colunas com espaços extras (atribuições, listas, dicionários). Um espaço só entre os elementos.
 - Mudança de comportamento vem com teste, no padrão dos testes que já existem.
-- Não altere o contrato de `POST /api/blur` sem pedido.
+- Não altere o contrato de `POST /api/blur` e `POST /api/preview` sem pedido.
 - Não altere o `README.md` sem pedido explícito, mesmo que fique desatualizado; avise em vez de editar.
 
 ## Estrutura de código
@@ -89,7 +94,7 @@ Rodar a suíte inteira do backend, `npm run lint`, `npx vitest run` e `npm run b
 ## Commits
 - Curtos, uma linha, no padrão Conventional Commits: `tipo(escopo): descrição`.
 - Tipos: feat, fix, refactor, test, docs, chore, build, ci.
-- Escopos: `backend`, `frontend`, `jpeg`, `png`, `webp`, `editor`, `api`.
+- Escopos: `backend`, `frontend`, `jpeg`, `png`, `webp`, `heic`, `editor`, `api`.
 - Descrição no imperativo, minúscula, sem ponto final.
 - Exemplos: `feat(jpeg): insere blocos com blur via jpegtran`, `fix(editor): corrige região fora da imagem`, `test(webp): cobre entrada lossy`.
 - Um commit por unidade lógica de mudança.
