@@ -84,7 +84,7 @@ Rodar a suíte inteira do backend, `npm run lint`, `npx vitest run` e `npm run b
 ## Git
 - Branch única: commits e push direto na `main`. Sem branches de feature, `develop` ou `staging`.
 - Nunca force push na `main`.
-- Conta do GitHub deste projeto: `GustavoQ-Mateus`. A conta ativa padrão do `gh` na máquina é outra (`Gustavo-QMateus`); usar `GustavoQ-Mateus` só para este repositório e não trocar a conta padrão de forma permanente.
+- Conta do GitHub deste projeto: `GustavoQ-Mateus`. A conta ativa padrão do `gh` na máquina é outra (`Gustavo-QMateus`); usar `GustavoQ-Mateus` só para este repositório e não trocar a conta padrão de forma permanente. Push: `GH_TOKEN=$(gh auth token -u GustavoQ-Mateus) git push`.
 
 ## Commits
 - Curtos, uma linha, no padrão Conventional Commits: `tipo(escopo): descrição`.
