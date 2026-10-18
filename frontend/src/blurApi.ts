@@ -5,8 +5,17 @@ export async function exportBlurred(file: File, regions: Region[]): Promise<Blob
   const body = new FormData()
   body.append('file', file)
   body.append('regions', JSON.stringify(toApiRegions(regions)))
+  return post('/api/blur', body)
+}
 
-  const response = await fetch('/api/blur', { method: 'POST', body })
+export async function fetchPreview(file: File): Promise<Blob> {
+  const body = new FormData()
+  body.append('file', file)
+  return post('/api/preview', body)
+}
+
+async function post(url: string, body: FormData): Promise<Blob> {
+  const response = await fetch(url, { method: 'POST', body })
   if (!response.ok) throw new Error(await errorMessage(response))
   return response.blob()
 }

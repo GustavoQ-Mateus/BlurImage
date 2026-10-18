@@ -11,7 +11,7 @@ import { useRegions } from './useRegions'
 const WEBP_NOTE = 'WebP é exportado sem perda (lossless); o arquivo pode ficar maior.'
 
 export default function App() {
-  const { file, image, open } = useImageFile()
+  const { file, image, error: openError, loading, open } = useImageFile()
   const { regions, selected, select, add, update, remove, clear } = useRegions()
   const [radius, setRadius] = useState(DEFAULT_RADIUS)
   const [exporting, setExporting] = useState(false)
@@ -38,6 +38,12 @@ export default function App() {
     else setRadius(value)
   }
 
+  function statusMessage() {
+    if (loading) return 'Abrindo…'
+    if (exporting) return 'Exportando…'
+    return error || openError || (file?.type === 'image/webp' ? WEBP_NOTE : '')
+  }
+
   async function handleExport() {
     if (!file) return
     setExporting(true)
@@ -56,7 +62,7 @@ export default function App() {
       <Toolbar
         file={file}
         image={image}
-        status={exporting ? 'Exportando…' : error || (file?.type === 'image/webp' ? WEBP_NOTE : '')}
+        status={statusMessage()}
         canExport={Boolean(image) && regions.length > 0 && !exporting}
         onOpen={handleOpen}
         onExport={handleExport}
@@ -73,7 +79,7 @@ export default function App() {
             onSelect={select}
           />
         ) : (
-          <div className="empty">Abra uma foto JPEG, PNG ou WebP para começar.</div>
+          <div className="empty">Abra uma foto JPEG, PNG, WebP ou HEIC para começar.</div>
         )}
         <RegionPanel
           regions={regions}
