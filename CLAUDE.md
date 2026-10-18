@@ -26,6 +26,7 @@ Respeite estas decisões. Mudar alguma exige discussão com o usuário antes do 
 - O navegador não exibe HEIC: o frontend mostra a prévia em JPEG gerada por `POST /api/preview`, já orientada.
 - Miniaturas embutidas são refeitas com o blur aplicado, no mesmo tamanho em bytes no caso do EXIF.
 - As regiões viajam em coordenadas da imagem orientada (como o navegador exibe); o backend converte para os pixels gravados.
+- Região é um retângulo com giro opcional (`rotation` em graus, sentido horário, em torno do centro). No backend ela vira os 4 cantos: orientação, escala e alinhamento em blocos operam sobre os cantos, e o blur é aplicado com máscara do polígono.
 - Backend sem estado e sem banco: `POST /api/blur` e `POST /api/preview`. O original nunca é sobrescrito.
 - Uma única abstração de variação: o `Protocol` `Codec`, registrado por formato em `build_codecs`. Formato novo é uma classe nova.
 
