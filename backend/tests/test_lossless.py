@@ -4,7 +4,7 @@ from app.codecs.lossless import LosslessCodec, png_options, webp_options
 from app.region import Region
 from tests.conftest import decode, encode, photo
 
-REGIONS = [Region(30, 25, 90, 70, radius=12), Region(170, 120, 203, 157, radius=8)]
+REGIONS = [Region.rectangle(30, 25, 90, 70, radius=12), Region.rectangle(170, 120, 203, 157, radius=8)]
 
 PNG = LosslessCodec("PNG", png_options)
 WEBP = LosslessCodec("WEBP", webp_options)
@@ -13,7 +13,7 @@ WEBP = LosslessCodec("WEBP", webp_options)
 def assert_only_regions_changed(before: Image.Image, after: Image.Image, regions: list[Region]) -> None:
     expected = before.copy()
     for region in regions:
-        expected.paste(after.crop(region.box), region.box[:2])
+        expected.paste(after.crop(region.bounds), region.bounds[:2])
     assert expected.tobytes() == after.tobytes(), "pixels fora das regiões mudaram"
     assert before.tobytes() != after.tobytes(), "o blur não alterou nada"
 
@@ -41,6 +41,19 @@ def test_only_regions_change_and_metadata_is_kept(codec, image_format, mode, opt
     assert_only_regions_changed(before, after, REGIONS)
 
 
+def test_rotated_region_blurs_only_inside_rotated_rectangle():
+    original = encode(photo(), "PNG")
+    region = Region.rectangle(60, 40, 140, 120, radius=10, rotation=45)
+
+    result = PNG.apply(original, [region])
+
+    before, after = decode(original), decode(result)
+    left, top, right, bottom = region.bounds
+    assert before.getpixel((left + 2, top + 2)) == after.getpixel((left + 2, top + 2))
+    assert before.getpixel((100, 80)) != after.getpixel((100, 80))
+    assert_only_regions_changed(before, after, [region])
+
+
 def test_png_text_chunks_are_kept():
     from PIL.PngImagePlugin import PngInfo
 
@@ -56,7 +69,7 @@ def test_regions_follow_exif_orientation():
     exif = Image.Exif()
     exif[0x0112] = 6  # girada 90° na exibição
     original = encode(raw, "PNG", exif=exif.tobytes())
-    displayed_region = Region(10, 20, 60, 45, radius=6)
+    displayed_region = Region.rectangle(10, 20, 60, 45, radius=6)
 
     result = PNG.apply(original, [displayed_region])
 

@@ -9,7 +9,7 @@ from app.heif.container import HeifContainer
 from app.region import Region
 from tests.conftest import decode, heic, photo
 
-REGIONS = [Region(30, 25, 90, 70, radius=12), Region(170, 120, 203, 157, radius=8)]
+REGIONS = [Region.rectangle(30, 25, 90, 70, radius=12), Region.rectangle(170, 120, 203, 157, radius=8)]
 TOUCHED_TILES = {0, 1, 4, 5, 6, 7, 10, 11}
 MIN_PSNR = 40
 
@@ -22,7 +22,8 @@ def displayed(data: bytes) -> np.ndarray:
 def outside_mask(shape: tuple[int, ...], regions: list[Region]) -> np.ndarray:
     mask = np.ones(shape[:2], dtype=bool)
     for region in regions:
-        mask[region.top : region.bottom, region.left : region.right] = False
+        left, top, right, bottom = region.bounds
+        mask[top:bottom, left:right] = False
     return mask
 
 
@@ -73,7 +74,7 @@ def test_regions_follow_heif_rotation(orientation):
     exif = Image.Exif()
     exif[0x0112] = orientation
     original = heic(photo(), exif=exif.tobytes())
-    region = Region(20, 30, 70, 80, radius=10)
+    region = Region.rectangle(20, 30, 70, 80, radius=10)
 
     result = HeicCodec().apply(original, [region])
 

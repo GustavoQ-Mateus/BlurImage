@@ -1,6 +1,6 @@
 from typing import Protocol
 from PIL import Image
-from app.region import EXIF_ORIENTATION_TAG, Region, clamp, to_raw
+from app.region import EXIF_ORIENTATION_TAG, Region, intersects, to_raw
 
 
 class UnsupportedImage(Exception):
@@ -14,8 +14,8 @@ class Codec(Protocol):
 
 def raw_regions(image: Image.Image, regions: list[Region]) -> list[Region]:
     orientation = image.getexif().get(EXIF_ORIENTATION_TAG, 1)
-    converted = (clamp(to_raw(r, orientation, *image.size), *image.size) for r in regions)
-    return [r for r in converted if r is not None]
+    converted = (to_raw(r, orientation, *image.size) for r in regions)
+    return [r for r in converted if intersects(r, *image.size)]
 
 
 def ensure_single_frame(image: Image.Image) -> None:

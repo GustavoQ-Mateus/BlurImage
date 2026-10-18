@@ -2,12 +2,12 @@ import jpeglib
 import numpy as np
 import pytest
 from app.codecs.jpeg import JpegCodec
-from app.region import Region
+from app.region import Region, align_to_grid
 from tests.conftest import decode, encode, exif_with_thumbnail, photo
 
 REGIONS = [
-    Region(30, 25, 90, 70, radius=12),
-    Region(170, 120, 203, 157, radius=8),  # encosta na borda
+    Region.rectangle(30, 25, 90, 70, radius=12),
+    Region.rectangle(170, 120, 203, 157, radius=8),  # encosta na borda
 ]
 
 CASES = [
@@ -20,8 +20,7 @@ CASES = [
 def changed_blocks(component: np.ndarray, block_px: int, mcu: int) -> np.ndarray:
     mask = np.zeros(component.shape[:2], dtype=bool)
     for region in REGIONS:
-        left, top = region.left // mcu * mcu, region.top // mcu * mcu
-        right, bottom = -(-region.right // mcu) * mcu, -(-region.bottom // mcu) * mcu
+        left, top, right, bottom = align_to_grid(region.bounds, mcu, mcu, 10**6, 10**6)
         mask[top // block_px : -(-bottom // block_px), left // block_px : -(-right // block_px)] = True
     return mask
 

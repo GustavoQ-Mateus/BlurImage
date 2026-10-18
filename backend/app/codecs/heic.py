@@ -8,7 +8,7 @@ from app.exif_thumbnail import blur_exif_thumbnail
 from app.heif.boxes import Box
 from app.heif.container import HeifContainer, InvalidHeif
 from app.heif.standalone import standalone_file
-from app.region import Region, clamp, scale_regions, to_raw
+from app.region import Region, clamp_box, expand_box, intersects, scale_regions, to_raw
 
 TILE_QUALITY = 92
 PREVIEW_QUALITY = 90
@@ -71,8 +71,8 @@ def _display_to_raw(
     for region in regions:
         for orientation, size in zip(reversed(orientations), reversed(sizes[:-1])):
             region = to_raw(region, orientation, *size)
-        converted.append(clamp(region, *raw_size))
-    return [r for r in converted if r is not None]
+        converted.append(region)
+    return [r for r in converted if intersects(r, *raw_size)]
 
 
 def _orientations(container: HeifContainer, item_id: int) -> list[int]:
@@ -104,27 +104,23 @@ def _blur_grid(container: HeifContainer, grid_id: int, regions: list[Region]) ->
     tiles = container.referenced("dimg", grid_id)
     tile_width, tile_height = container.size(tiles[0])
     canvas_size = (grid.columns * tile_width, grid.rows * tile_height)
-    context = [_expanded(r, r.radius * CONTEXT_FACTOR, canvas_size) for r in regions]
+    boxes = [clamp_box(r.bounds, *canvas_size) for r in regions]
+    context = [clamp_box(expand_box(box, r.radius * CONTEXT_FACTOR), *canvas_size) for r, box in zip(regions, boxes)]
     canvas = None
     for index in _tiles_touching(context, grid.columns, tile_width, tile_height):
         tile = _decode_coded_item(container, tiles[index])
         canvas = canvas or Image.new(tile.mode, canvas_size)
         canvas.paste(tile, _tile_box(index, grid.columns, tile_width, tile_height)[:2])
     blurred = blur_regions(canvas, regions)
-    for index in _tiles_touching(regions, grid.columns, tile_width, tile_height):
+    for index in _tiles_touching(boxes, grid.columns, tile_width, tile_height):
         _encode_into(container, tiles[index], blurred.crop(_tile_box(index, grid.columns, tile_width, tile_height)))
 
 
-def _expanded(region: Region, margin: int, size: tuple[int, int]) -> Region:
-    box = region.with_box(region.left - margin, region.top - margin, region.right + margin, region.bottom + margin)
-    return clamp(box, *size)
-
-
-def _tiles_touching(regions: list[Region], columns: int, tile_width: int, tile_height: int) -> list[int]:
+def _tiles_touching(boxes: list[tuple[int, int, int, int]], columns: int, tile_width: int, tile_height: int) -> list[int]:
     indexes = set()
-    for region in regions:
-        for row in range(region.top // tile_height, (region.bottom - 1) // tile_height + 1):
-            for column in range(region.left // tile_width, (region.right - 1) // tile_width + 1):
+    for left, top, right, bottom in boxes:
+        for row in range(top // tile_height, (bottom - 1) // tile_height + 1):
+            for column in range(left // tile_width, (right - 1) // tile_width + 1):
                 indexes.add(row * columns + column)
     return sorted(indexes)
 

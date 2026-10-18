@@ -60,3 +60,11 @@ def test_preview_rejects_formats_the_browser_can_show(client):
     response = client.post("/api/preview", files={"file": ("foto.png", encode(photo(), "PNG"))})
 
     assert response.status_code == 415
+
+
+def test_accepts_rotated_region(client):
+    rotated = json.dumps([{"x": 10, "y": 10, "width": 50, "height": 40, "radius": 10, "rotation": 30}])
+
+    response = client.post("/api/blur", files={"file": ("a.png", encode(photo(), "PNG"))}, data={"regions": rotated})
+
+    assert response.status_code == 200

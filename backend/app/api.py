@@ -12,20 +12,22 @@ from app.codecs.heic import heic_preview
 from app.region import Region
 
 MAX_RADIUS = 500
+MAX_ROTATION = 360
 HEIF = "HEIF"
 
 pillow_heif.register_heif_opener()
 
 
 class RegionIn(BaseModel):
-    x: int = Field(ge=0)
-    y: int = Field(ge=0)
+    x: int
+    y: int
     width: int = Field(gt=0)
     height: int = Field(gt=0)
     radius: int = Field(gt=0, le=MAX_RADIUS)
+    rotation: float = Field(0, ge=-MAX_ROTATION, le=MAX_ROTATION)
 
     def to_region(self) -> Region:
-        return Region(self.x, self.y, self.x + self.width, self.y + self.height, self.radius)
+        return Region.rectangle(self.x, self.y, self.x + self.width, self.y + self.height, self.radius, self.rotation)
 
 
 REGIONS = TypeAdapter(list[RegionIn])

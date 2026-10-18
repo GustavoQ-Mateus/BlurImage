@@ -6,7 +6,7 @@ from PIL import Image, JpegImagePlugin
 from app.blur import blur_regions
 from app.codecs.base import UnsupportedImage, ensure_single_frame, raw_regions
 from app.exif_thumbnail import blur_exif_thumbnail
-from app.region import Region, align_to_grid
+from app.region import Region, align_to_grid, clamp_box
 
 BLOCK_SIZE = 8
 APP1 = 0xE1
@@ -28,10 +28,10 @@ class JpegCodec:
             blurred = blur_regions(image, targets)
             patches = []
             for region in targets:
-                cell = align_to_grid(region, cell_width, cell_height, *image.size)
+                cell = align_to_grid(clamp_box(region.bounds, *image.size), cell_width, cell_height, *image.size)
                 patch = BytesIO()
-                blurred.crop(cell.box).save(patch, "JPEG", qtables=image.quantization, subsampling=subsampling)
-                patches.append((cell.left, cell.top, patch.getvalue()))
+                blurred.crop(cell).save(patch, "JPEG", qtables=image.quantization, subsampling=subsampling)
+                patches.append((cell[0], cell[1], patch.getvalue()))
             blurred_exif = blur_exif_thumbnail(exif, targets, image.size)
         return _replace_segment(self._drop(data, patches, progressive), exif, blurred_exif)
 

@@ -6,7 +6,7 @@ from app.region import Region
 from tests.conftest import SIZE, exif_with_thumbnail, photo
 
 THUMBNAIL_SIZE = (64, 48)
-LEFT_HALF = Region(0, 0, SIZE[0] // 2, SIZE[1], radius=20)
+LEFT_HALF = Region.rectangle(0, 0, SIZE[0] // 2, SIZE[1], radius=20)
 
 
 def thumbnail_of(exif: bytes) -> Image.Image:
